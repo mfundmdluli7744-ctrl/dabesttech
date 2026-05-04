@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, send_from_directory, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -14,7 +14,7 @@ from routes.requests import requests_bp
 from routes.invoices import invoices_bp
 from routes.courses import courses_bp
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../frontend', static_url_path='')
 app.config.from_object(Config)
 
 # Restrict CORS to the configured allowed origin in production
@@ -38,8 +38,14 @@ with app.app_context():
         print(f"Warning: Could not synchronize database tables: {e}")
 
 @app.route("/")
-def home():
-    return {"status": "ok", "message": "Dabest Tech Hub API is running"}
+def index():
+    return send_from_directory(app.static_folder, 'index.html')
+
+@app.errorhandler(404)
+def not_found(e):
+    if request.path.startswith('/api'):
+        return jsonify({"message": "Not found"}), 404
+    return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == "__main__":
     # debug=True only runs locally — gunicorn ignores this in production

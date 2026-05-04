@@ -8,7 +8,7 @@ class User(db.Model):
     name = db.Column(db.String(100))
     email = db.Column(db.String(100), unique=True)
     password = db.Column(db.String(200))
-    role = db.Column(db.String(20))  # admin, student, client
+    role = db.Column(db.String(20))  # admin, staff, student, client
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Project(db.Model):
@@ -18,7 +18,8 @@ class Project(db.Model):
     category = db.Column(db.String(50))
     file_path = db.Column(db.String(255))
     github_link = db.Column(db.String(255))
-    student_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    student_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    author_name = db.Column(db.String(100)) # For anonymous uploads
     likes = db.Column(db.Integer, default=0)
     views = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -31,7 +32,9 @@ class ClientRequest(db.Model):
     description = db.Column(db.Text, nullable=False)
     budget = db.Column(db.Float)
     status = db.Column(db.String(20), default='Pending') # Pending, Assigned, Completed
-    client_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    client_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    client_name = db.Column(db.String(100)) # For anonymous requests
+    client_email = db.Column(db.String(100)) # For anonymous requests
     assigned_student_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

@@ -29,6 +29,12 @@ const navConfig = {
         { name: 'Dashboard', path: '#dashboard', icon: '📈' },
         { name: 'My Requests', path: '#requests', icon: '📩' },
         { name: 'Invoices', path: '#invoices', icon: '💰' }
+    ],
+    guest: [
+        { name: 'Home', path: '#dashboard', icon: '🏠' },
+        { name: 'Project Hub', path: '#projects', icon: '📁' },
+        { name: 'Learning Hub', path: '#courses', icon: '📚' },
+        { name: 'Submit Request', path: '#submit-request', icon: '📩' }
     ]
 };
 
@@ -110,21 +116,15 @@ function renderEmptyState(icon, title, description, container = mainContent) {
 function handleRoute() {
     const hash = window.location.hash || '#dashboard';
     
-    // Redirect to login if no token
-    if (!appState.token && hash !== '#register') {
-        window.location.hash = '#login';
-        renderLogin();
-        return;
-    }
-
-    // Render Navigation if logged in
-    if (appState.token) {
+    // Role logic — default to guest if no token
+    if (!appState.token) {
+        appState.role = 'guest';
+        sidebar.classList.add('hidden');
+        mainContent.classList.add('full-width');
+    } else {
         sidebar.classList.remove('hidden');
         mainContent.classList.remove('full-width');
         renderNavigation(hash);
-    } else {
-        sidebar.classList.add('hidden');
-        mainContent.classList.add('full-width');
     }
 
     // Route logic
@@ -151,6 +151,9 @@ function handleRoute() {
         case '#courses':
             renderCourses();
             break;
+        case '#submit-request':
+            renderRequestForm();
+            break;
         default:
             renderDashboard();
     }
@@ -158,9 +161,10 @@ function handleRoute() {
 
 // Render Navigation
 function renderNavigation(currentHash) {
-    if (!appState.role || !navConfig[appState.role]) return;
+    const role = appState.role || 'guest';
+    if (!navConfig[role]) return;
     
-    const linksHtml = navConfig[appState.role].map(link => `
+    const linksHtml = navConfig[role].map(link => `
         <li class="nav-item">
             <a href="${link.path}" class="nav-link ${currentHash === link.path ? 'active' : ''}">
                 <span style="margin-right: 10px;">${link.icon}</span> ${link.name}
@@ -176,8 +180,8 @@ function renderLogin() {
     mainContent.innerHTML = `
         <div class="auth-container fade-in">
             <div class="glass-card">
-                <h2>Welcome Back</h2>
-                <p>Login to your DABEST Hub account</p>
+                <h2>Management Login</h2>
+                <p>Authorized Admin and Staff only</p>
                 <form id="login-form" class="auth-form">
                     <div class="form-group">
                         <label>Email Address</label>
@@ -188,9 +192,6 @@ function renderLogin() {
                         <input type="password" id="password" class="form-control" placeholder="••••••••" required>
                     </div>
                     <button type="submit" id="login-btn" class="btn btn-primary btn-full">Sign In</button>
-                    <p class="mt-4" style="font-size: 0.9rem;">
-                        Don't have an account? <a href="#register" style="color: var(--accent-primary); font-weight: 600;">Create one</a>
-                    </p>
                 </form>
             </div>
         </div>
@@ -282,7 +283,10 @@ function renderRegister() {
 }
 
 async function renderDashboard() {
-    if (!appState.role) return;
+    if (!appState.token) {
+        renderGuestDashboard();
+        return;
+    }
     renderLoading();
     
     try {
@@ -356,6 +360,45 @@ async function renderDashboard() {
     } catch (error) {
         renderEmptyState('⚠️', 'Dashboard Error', error.message);
     }
+}
+
+function renderGuestDashboard() {
+    mainContent.innerHTML = `
+        <div class="fade-in">
+            <div class="hero-section glass-panel">
+                <div class="hero-content">
+                    <h1>Welcome to <span class="text-gradient">DABEST Tech Hub</span></h1>
+                    <p>Empowering the next generation of tech leaders. Explore projects, learn new skills, or collaborate with our talented students.</p>
+                    <div class="hero-actions">
+                        <a href="#projects" class="btn btn-primary">Browse Projects</a>
+                        <a href="#submit-request" class="btn btn-secondary">Hire a Student</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="features-grid mt-5">
+                <div class="glass-card feature-card">
+                    <div class="feature-icon">📁</div>
+                    <h3>Project Hub</h3>
+                    <p>Discover innovative solutions built by our students across web, mobile, and AI.</p>
+                </div>
+                <div class="glass-card feature-card">
+                    <div class="feature-icon">📚</div>
+                    <h3>Learning Hub</h3>
+                    <p>Access curated resources and tutorials to level up your technical expertise.</p>
+                </div>
+                <div class="glass-card feature-card">
+                    <div class="feature-icon">📩</div>
+                    <h3>Hire Talent</h3>
+                    <p>Submit your project requirements and get matched with our skilled developers.</p>
+                </div>
+            </div>
+            
+            <div class="mt-5 text-center">
+                <p class="text-muted">Are you a staff member? <a href="#login" class="text-gradient">Admin Login</a></p>
+            </div>
+        </div>
+    `;
 }
 
 
@@ -457,6 +500,18 @@ function renderRequestForm() {
                         <label>Project Title</label>
                         <input type="text" id="req-title" class="form-control" placeholder="e.g. E-commerce Website" required>
                     </div>
+                    ${!appState.token ? `
+                    <div class="d-flex gap-2">
+                        <div class="form-group flex-1">
+                            <label>Your Name</label>
+                            <input type="text" id="req-name" class="form-control" placeholder="Full Name" required>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label>Email Address</label>
+                            <input type="email" id="req-email" class="form-control" placeholder="Email" required>
+                        </div>
+                    </div>
+                    ` : ''}
                     <div class="form-group">
                         <label>Description</label>
                         <textarea id="req-desc" class="form-control" rows="4" placeholder="Describe your project requirements..." required></textarea>
@@ -481,12 +536,14 @@ function renderRequestForm() {
         const title = document.getElementById('req-title').value;
         const description = document.getElementById('req-desc').value;
         const budget = document.getElementById('req-budget').value;
+        const client_name = !appState.token ? document.getElementById('req-name').value : null;
+        const client_email = !appState.token ? document.getElementById('req-email').value : null;
         
         btn.disabled = true;
         btn.innerText = 'Submitting...';
 
         try {
-            await api.post('/requests/submit', { title, description, budget });
+            await api.post('/requests/submit', { title, description, budget, client_name, client_email });
             showToast("Request submitted successfully!", 'success');
             closeModal();
             renderRequests();
@@ -639,6 +696,12 @@ function renderUploadForm() {
                         <label>Project Title</label>
                         <input type="text" id="proj-title" class="form-control" placeholder="e.g. My Portfolio" required>
                     </div>
+                    ${!appState.token ? `
+                    <div class="form-group">
+                        <label>Author Name</label>
+                        <input type="text" id="proj-author" class="form-control" placeholder="Your Full Name" required>
+                    </div>
+                    ` : ''}
                     <div class="form-group">
                         <label>Category</label>
                         <select id="proj-category" class="form-control">
@@ -675,6 +738,9 @@ function renderUploadForm() {
         const btn = document.getElementById('upload-btn');
         const formData = new FormData();
         formData.append('title', document.getElementById('proj-title').value);
+        if (!appState.token) {
+            formData.append('author_name', document.getElementById('proj-author').value);
+        }
         formData.append('category', document.getElementById('proj-category').value);
         formData.append('description', document.getElementById('proj-desc').value);
         formData.append('github_link', document.getElementById('proj-github').value);

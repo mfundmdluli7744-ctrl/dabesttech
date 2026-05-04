@@ -27,7 +27,7 @@ def get_projects():
             "description": p.description,
             "category": p.category,
             "github_link": p.github_link,
-            "student_name": student.name if student else "Unknown",
+            "student_name": p.author_name if p.author_name else (student.name if student else "Unknown"),
             "likes": p.likes,
             "views": p.views
         })
@@ -35,17 +35,20 @@ def get_projects():
 
 
 @projects.route("/upload", methods=["POST"])
-@student_required
 def upload_project():
-    student_id = flask_request.user.get('id')
+    # If logged in, we can still use the user ID, otherwise it's anonymous
+    user = getattr(flask_request, 'user', None)
+    student_id = user.get('id') if user else None
+    
+    author_name = flask_request.form.get("author_name")
 
     title = flask_request.form.get("title")
     description = flask_request.form.get("description")
     category = flask_request.form.get("category")
     github_link = flask_request.form.get("github_link")
 
-    if not title or not description:
-        return jsonify({"message": "Title and description are required"}), 400
+    if not title or not description or (not author_name and not student_id):
+        return jsonify({"message": "Title, description, and author name are required"}), 400
 
     if 'file' not in flask_request.files:
         return jsonify({"message": "No file uploaded"}), 400
@@ -59,8 +62,9 @@ def upload_project():
         return jsonify({"message": f"File type not allowed. Allowed types: {', '.join(sorted(ALLOWED_EXTENSIONS))}"}), 400
 
     filename = secure_filename(file.filename)
-    # Prefix with student_id to avoid collisions
-    filename = f"{student_id}_{filename}"
+    # Use student_id or 'anon' to avoid collisions
+    prefix = student_id if student_id else 'anon'
+    filename = f"{prefix}_{filename}"
     file_path = os.path.join(UPLOAD_FOLDER, filename)
     file.save(file_path)
 
@@ -69,8 +73,9 @@ def upload_project():
         description=description,
         category=category,
         github_link=github_link,
-        file_path=filename,  # store relative filename
-        student_id=student_id
+        file_path=filename,
+        student_id=student_id,
+        author_name=author_name if not student_id else None
     )
 
     db.session.add(new_project)

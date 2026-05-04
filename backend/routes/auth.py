@@ -10,6 +10,7 @@ ALLOWED_SELF_REGISTER_ROLES = {"student", "client"}
 
 
 @auth.route("/register", methods=["POST"])
+@admin_required
 def register():
     data = request.json
 
@@ -51,6 +52,9 @@ def login():
 
     if not user or not check_password_hash(user.password, data["password"]):
         return jsonify({"message": "Invalid email or password"}), 401
+
+    if user.role not in ['admin', 'staff']:
+        return jsonify({"message": "Unauthorized. Only Admin and Staff can log in."}), 403
 
     token = generate_token(user)
     return jsonify({"token": token, "role": user.role, "name": user.name})
